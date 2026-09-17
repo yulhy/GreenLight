@@ -49,9 +49,12 @@ function App() {
     useState(1);
 
   const [foodCountPerPerson, setFoodCountPerPerson] =
-  useState(1);
+    useState(1);
 
   const [suppliesCount, setSuppliesCount] =
+    useState(1);
+
+  const [printingCount, setPrintingCount] =
     useState(1);
 
   const {
@@ -84,12 +87,10 @@ function App() {
     const result = await runAnalysis(
       confirmedPlan,
       {
-        vehicleCount:
-          transportQuantity,
-
+        vehicleCount: transportQuantity,
         foodCountPerPerson,
-
         suppliesCount,
+        printingCount,
       },
     );
 
@@ -102,11 +103,12 @@ function App() {
   function handleStartOver() {
     setConfirmedPlan(null);
     setTransportQuantity(1);
+    setFoodCountPerPerson(1);
+    setSuppliesCount(1);
+    setPrintingCount(1);
     resetAnalysis();
     setCurrentStep("input");
     setSelectedAlternativeId(null);
-    setFoodCountPerPerson(1);
-    setSuppliesCount(1);
   }
 
 
@@ -116,14 +118,29 @@ function App() {
         (alternative) =>
           alternative.id === selectedAlternativeId,
       ) ?? null;
-    /*
-     * Chat에서 필수 정보 수집이 끝났지만
-     * 아직 분석을 실행하지 않은 상태
-     */
+
     if (
       currentStep === "input"
       && confirmedPlan
     ) {
+      const hasInvalidQuantity =
+        (
+          Boolean(confirmedPlan.transport)
+          && transportQuantity < 1
+        )
+        || (
+          Boolean(confirmedPlan.mealPlan)
+          && foodCountPerPerson < 1
+        )
+        || (
+          Boolean(confirmedPlan.suppliesPlan)
+          && suppliesCount < 1
+        )
+        || (
+          Boolean(confirmedPlan.printingPlan)
+          && printingCount < 1
+        );
+
       return (
         <section>
           <h1>
@@ -157,66 +174,74 @@ function App() {
           </div>
 
 
-          <div className="budget-row">
-            <label htmlFor="transport-quantity">
-              이동수단 수량
-            </label>
+          {confirmedPlan.transport && (
+            <div className="budget-row">
+              <label htmlFor="transport-quantity">
+                이동수단 수량
+              </label>
 
-            <div className="money-input">
-              <input
-                id="transport-quantity"
-                type="number"
-                min="1"
-                step="1"
-                value={transportQuantity}
-                disabled={isAnalyzing}
-                onChange={(event) => {
-                  const value =
-                    Number(event.target.value);
+              <div className="money-input">
+                <input
+                  id="transport-quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={transportQuantity}
+                  disabled={isAnalyzing}
+                  onChange={(event) => {
+                    const value =
+                      Number(event.target.value);
 
-                  setTransportQuantity(
-                    Number.isFinite(value)
-                      ? value
-                      : 1,
-                  );
-                }}
-              />
+                    setTransportQuantity(
+                      Number.isFinite(value)
+                        ? value
+                        : 1,
+                    );
+                  }}
+                />
 
-              <span>
-                대
-              </span>
+                <span>
+                  대
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="budget-row">
-            <label htmlFor="food-count">
-              1인당 식사/제공 횟수
-            </label>
+          )}
 
-            <div className="money-input">
-              <input
-                id="food-count"
-                type="number"
-                min="1"
-                step="1"
-                value={foodCountPerPerson}
-                disabled={isAnalyzing}
-                onChange={(event) => {
-                  const value =
-                    Number(event.target.value);
 
-                  setFoodCountPerPerson(
-                    Number.isFinite(value)
-                      ? value
-                      : 1,
-                  );
-                }}
-              />
+          {confirmedPlan.mealPlan && (
+            <div className="budget-row">
+              <label htmlFor="food-count">
+                1인당 식사/제공 횟수
+              </label>
 
-              <span>
-                회
-              </span>
+              <div className="money-input">
+                <input
+                  id="food-count"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={foodCountPerPerson}
+                  disabled={isAnalyzing}
+                  onChange={(event) => {
+                    const value =
+                      Number(event.target.value);
+
+                    setFoodCountPerPerson(
+                      Number.isFinite(value)
+                        ? value
+                        : 1,
+                    );
+                  }}
+                />
+
+                <span>
+                  회
+                </span>
+              </div>
             </div>
-          </div>
+          )}
+
+
           {confirmedPlan.suppliesPlan && (
             <div className="budget-row">
               <label htmlFor="supplies-count">
@@ -249,10 +274,45 @@ function App() {
               </div>
             </div>
           )}
+
+
+          {confirmedPlan.printingPlan && (
+            <div className="budget-row">
+              <label htmlFor="printing-count">
+                인쇄물 수량
+              </label>
+
+              <div className="money-input">
+                <input
+                  id="printing-count"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={printingCount}
+                  disabled={isAnalyzing}
+                  onChange={(event) => {
+                    const value =
+                      Number(event.target.value);
+
+                    setPrintingCount(
+                      Number.isFinite(value)
+                        ? value
+                        : 1,
+                    );
+                  }}
+                />
+
+                <span>
+                  장/개
+                </span>
+              </div>
+            </div>
+          )}
+
+
           <p className="small">
-            현재 이동수단의 수량을 입력해 주세요.
-            식사·숙박·식기 수량은 참가 인원과
-            행사 기간을 기준으로 계산합니다.
+            실제 계산에 필요한 수량만 확인합니다.
+            숙박 수량은 참가 인원과 행사 기간을 기준으로 계산합니다.
           </p>
 
 
@@ -281,7 +341,7 @@ function App() {
               className="primary"
               disabled={
                 isAnalyzing
-                || transportQuantity < 1
+                || hasInvalidQuantity
               }
               onClick={handleRunAnalysis}
             >
@@ -391,6 +451,23 @@ function App() {
                             ", ",
                           )}
                         </span>
+                        {alternative.changes.length > 0 && (
+                          <span className="option-desc">
+                            {alternative.changes.join(
+                              " · ",
+                            )}
+                          </span>
+                        )}
+
+                        {alternative.explanation && (
+                          <span className="option-desc">
+                            {
+                              alternative
+                                .explanation
+                                .summary
+                            }
+                          </span>
+                        )}
                       </span>
 
                       <span
@@ -498,6 +575,83 @@ function App() {
               </div>
             </div>
 
+            {selectedAlternative && (
+              <div className="alternative-detail">
+                <span className="alternative-detail-kicker">
+                  선택한 최종 대안
+                </span>
+
+                <h2>
+                  {selectedAlternative.name}
+                </h2>
+
+                {selectedAlternative.explanation && (
+                  <p className="alternative-summary">
+                    {
+                      selectedAlternative
+                        .explanation
+                        .summary
+                    }
+                  </p>
+                )}
+
+                <div className="alternative-detail-section">
+                  <h3>
+                    변경되는 내용
+                  </h3>
+
+                  {selectedAlternative.changes.length ? (
+                    <ul className="alternative-change-list">
+                      {selectedAlternative.changes.map(
+                        (change, index) => (
+                          <li
+                            key={`${change}-${index}`}
+                          >
+                            {change}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  ) : (
+                    <p>
+                      변경 내역이 없습니다.
+                    </p>
+                  )}
+                </div>
+
+                {selectedAlternative.explanation && (
+                  <div className="alternative-ai-grid">
+                    <div>
+                      <strong>
+                        장점
+                      </strong>
+
+                      <p>
+                        {
+                          selectedAlternative
+                            .explanation
+                            .advantages
+                        }
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong>
+                        고려할 점
+                      </strong>
+
+                      <p>
+                        {
+                          selectedAlternative
+                            .explanation
+                            .tradeoff
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="final-cost">
               <span>

@@ -123,8 +123,23 @@ function ChatPage({
           placeholder="모임 · 인원 · 예산을 자유롭게"
           disabled={isLoading}
           onChange={(event) =>
-            setInput(event.target.value)
+            setInput(
+              event.target.value,
+            )
           }
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter"
+              && !event.shiftKey
+              && !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+
+              void submitMessage(
+                input,
+              );
+            }
+          }}
         />
 
         <div className="composer-bottom">
