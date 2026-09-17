@@ -7,6 +7,11 @@ import type {
   PlanAnalysisResponse,
 } from "../types/plan";
 
+import type {
+  CatalogCategoriesResponse,
+  CatalogItem,
+  CatalogItemsResponse,
+} from "../types/catalog";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
@@ -62,5 +67,49 @@ export async function analyzePlan(
   return response.data;
 }
 
+export async function getCatalogCategories():
+  Promise<string[]> {
+  const response =
+    await apiClient.get<CatalogCategoriesResponse>(
+      "/api/catalog/categories",
+    );
+
+  return response.data.categories;
+}
+
+
+export async function getCatalogItems(
+  category: string,
+): Promise<CatalogItem[]> {
+  const response =
+    await apiClient.get<CatalogItemsResponse>(
+      "/api/catalog/items",
+      {
+        params: {
+          category,
+        },
+      },
+    );
+
+  return response.data.items;
+}
+
+
+export async function getCatalogItem(
+  category: string,
+  itemId: string,
+): Promise<CatalogItem> {
+  const response =
+    await apiClient.get<CatalogItem>(
+      `/api/catalog/items/${itemId}`,
+      {
+        params: {
+          category,
+        },
+      },
+    );
+
+  return response.data;
+}
 
 export default apiClient;

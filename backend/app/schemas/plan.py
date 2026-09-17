@@ -169,35 +169,16 @@ class PlanAnalysisRequest(BaseModel):
 
 
 class CarbonBreakdown(BaseModel):
-    """
-    현재 계획의 카테고리별 탄소배출 분석 결과.
-    """
-
     category: str
 
-    carbonKgCo2e: float = Field(
-        ge=0,
-    )
+    carbonKgCo2e: float | None = None
 
-    sharePercent: float = Field(
-        ge=0,
-        le=100,
-    )
+    sharePercent: float | None = None
 
 
 class CurrentPlanAnalysis(BaseModel):
-    """
-    현재 계획의 탄소배출량과 비용 분석 결과.
-    """
-
-    totalCarbonKgCo2e: float = Field(
-        ge=0,
-    )
-
-    totalCostKrw: float = Field(
-        ge=0,
-    )
-
+    totalCarbonKgCo2e: float | None = None
+    totalCostKrw: float = Field(ge=0)
     breakdown: list[CarbonBreakdown] = Field(
         default_factory=list,
     )

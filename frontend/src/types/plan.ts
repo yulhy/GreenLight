@@ -69,46 +69,34 @@ export interface PlanAnalysisRequest {
   selections: PlanSelection[];
 }
 
-
 export interface CarbonBreakdown {
   category: string;
-  carbonKgCo2e: number;
-  sharePercent: number;
+  carbonKgCo2e: number | null;
+  sharePercent: number | null;
 }
 
-
 export interface CurrentPlanAnalysis {
-  totalCarbonKgCo2e: number;
+  totalCarbonKgCo2e: number | null;
   totalCostKrw: number;
   breakdown: CarbonBreakdown[];
 }
 
-
 export interface AlternativePlan {
   id: string;
   name: string;
-
   changedCategories: string[];
-
   totalCarbonKgCo2e: number;
   totalCostKrw: number;
-
   carbonReductionPercent: number;
   costDifferenceKrw: number;
-
   constraintsSatisfied: boolean;
 }
 
-
 export interface PlanAnalysisResponse {
   currentPlan: CurrentPlanAnalysis;
-
   hotspots: string[];
-
   alternatives: AlternativePlan[];
-
-  recommendedAlternativeId?: string | null;
-  recommendationReason?: string | null;
-
+  recommendedAlternativeId: string | null;
+  recommendationReason: string;
   disclaimer: string;
 }
