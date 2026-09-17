@@ -218,6 +218,28 @@ function ResultPage({
             </dd>
           </div>
 
+          {plan.purpose && (
+            <div>
+              <dt>
+                행사 목적
+              </dt>
+
+              <dd>
+                {plan.purpose}
+              </dd>
+            </div>
+          )}
+
+          <div>
+            <dt>
+              출발지
+            </dt>
+
+            <dd>
+              {plan.origin ?? "-"}
+            </dd>
+          </div>
+
           <div>
             <dt>
               목적지
@@ -301,6 +323,16 @@ function ResultPage({
 
             <dd>
               {plan.suppliesPlan ?? "-"}
+            </dd>
+          </div>
+
+          <div>
+            <dt>
+              인쇄물
+            </dt>
+
+            <dd>
+              {plan.printingPlan ?? "-"}
             </dd>
           </div>
 
