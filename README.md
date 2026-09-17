@@ -65,34 +65,93 @@ greenmate/
 ├─ frontend/
 │  ├─ src/
 │  │  ├─ components/
+│  │  │  ├─ .gitkeep
+│  │  │  ├─ ChatMessage.tsx
+│  │  │  ├─ ComparisonTable.tsx
+│  │  │  ├─ EmissionChart.tsx
+│  │  │  └─ PlanSummary.tsx
 │  │  ├─ pages/
+│  │  │  ├─ .gitkeep
+│  │  │  ├─ ChatPage.tsx
+│  │  │  └─ ResultPage.tsx
 │  │  ├─ hooks/
+│  │  │  ├─ .gitkeep
+│  │  │  └─ hook.ts
 │  │  ├─ services/
+│  │  │  ├─ .gitkeep
+│  │  │  └─ api.ts
 │  │  ├─ types/
+│  │  │  ├─ .gitkeep
+│  │  │  └─ plan.ts
 │  │  ├─ utils/
+│  │  │  └─.gitkeep
 │  │  ├─ App.tsx
 │  │  └─ main.tsx
 │  ├─ public/
+│  │  └─ .gitkeep
 │  ├─ package.json
 │  └─ vite.config.ts
 ├─ backend/
 │  ├─ app/
 │  │  ├─ api/
+│  │  ├─ __init__.py
+│  │  ├─ routes
+│  │  │  ├─ __init__.py
+│  │  │  ├─ .gitkeep
+│  │  │  ├─ chat.py
+│  │  │  └─ plans.py
 │  │  ├─ core/
+│  │  │  ├─ __init__.py
+│  │  │  └─ .gitkeep
 │  │  ├─ models/
+│  │  │  ├─ __init__.py
+│  │  │  └─ .gitkeep
 │  │  ├─ schemas/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ plan.py
+│  │  │  └─ .gitkeep
 │  │  ├─ services/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ analyzer.py
+│  │  │  ├─ calculator.py
+│  │  │  ├─ llm_service.py
+│  │  │  ├─ recommendation_service.py
+│  │  │  └─ .gitkeep
 │  │  ├─ rules/
+│  │  │  ├─ __init__.py
+│  │  │  ├─ feasibility.py
+│  │  │  └─ .gitkeep
 │  │  ├─ repositories/
+│  │  │  ├─ .gitkeep
+│  │  │  ├─ catalog_repository.py
+│  │  │  └─ __init__.py
 │  │  ├─ data/
+│  │  │  ├─ .gitkeep
+│  │  │  └─ catalog.csv
+│  │  ├─ __init__.py
 │  │  └─ main.py
 │  ├─ tests/
+│  │  ├─ __init__.py
+│  │  ├─ .gitkeep
+│  │  ├─ test_calculator.py
+│  │  └─ test_feasibility.py
 │  ├─ requirements.txt
 │  └─ .env.example
 ├─ docs/
 │  ├─ data-sources.md
+│  ├─ ai-behavior.md
+│  ├─ api-contract.md
+│  ├─ architecture.md
+│  ├─ bussiness-rules.md
+│  ├─ data-dictionary.md
+│  ├─ decisions.md
+│  ├─ project-overview.md
+│  ├─ requirements.md
+│  ├─ testing.md
+│  ├─ ui-flow.md
 │  └─ demo-scenario.md
 ├─ .gitignore
+├─ Agents.md
 └─ README.md
 ```
 
