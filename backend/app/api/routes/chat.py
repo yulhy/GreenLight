@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+import traceback
+
+from fastapi import APIRouter, HTTPException
+from openai import APIError, RateLimitError
 
 from app.schemas.plan import ChatRequest, ChatResponse
 from app.services.llm_service import process_chat
@@ -14,15 +17,38 @@ router = APIRouter(
     response_model=ChatResponse,
     summary="AI 대화 및 행사 계획 구조화",
 )
-async def chat(request: ChatRequest) -> ChatResponse:
-    """
-    사용자와의 대화 내용을 기반으로 행사 계획 정보를 구조화한다.
+async def chat(
+    request: ChatRequest,
+) -> ChatResponse:
+    try:
+        return await process_chat(request)
 
-    - 사용자 대화에서 행사 정보를 추출한다.
-    - 현재까지 수집된 계획과 합친다.
-    - 필수 정보 중 누락된 항목을 확인한다.
-    - 누락 정보가 있으면 추가 질문을 생성한다.
-    - 분석 가능한 상태인지 반환한다.
-    """
+    except RateLimitError as exc:
+        print("\n===== LLM RATE LIMIT ERROR =====")
+        traceback.print_exc()
+        print("================================\n")
 
-    return await process_chat(request)
+        raise HTTPException(
+            status_code=429,
+            detail=f"AI 사용량 한도 초과: {str(exc)}",
+        ) from exc
+
+    except APIError as exc:
+        print("\n===== LLM API ERROR =====")
+        traceback.print_exc()
+        print("=========================\n")
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI 서비스 호출 오류: {str(exc)}",
+        ) from exc
+
+    except Exception as exc:
+        print("\n===== UNEXPECTED CHAT ERROR =====")
+        traceback.print_exc()
+        print("=================================\n")
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"채팅 처리 오류: {str(exc)}",
+        ) from exc

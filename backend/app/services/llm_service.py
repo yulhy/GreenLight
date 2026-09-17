@@ -2,19 +2,53 @@ import json
 import os
 
 from openai import AsyncOpenAI
+from pydantic import BaseModel
 
-from app.schemas.plan import ChatRequest, ChatResponse, PlanDraft
+from app.schemas.plan import (
+    ChatRequest,
+    ChatResponse,
+    PlanDraft,
+)
 
+
+# =========================================================
+# LLM Client
+# =========================================================
+
+# ---------------------------------------------------------
+# [임시] Gemini API
+# ---------------------------------------------------------
 
 client = AsyncOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
+    api_key=os.getenv("GEMINI_API_KEY"),
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
 
-OPENAI_MODEL = os.getenv(
-    "OPENAI_MODEL",
-    "gpt-5-mini",
+MODEL_NAME = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-2.5-flash",
 )
 
+
+# ---------------------------------------------------------
+# [추후] OpenAI API
+# Gemini 사용을 중단할 때 위 client / MODEL_NAME을 주석 처리하고
+# 아래 코드를 주석 해제해서 사용
+# ---------------------------------------------------------
+
+# client = AsyncOpenAI(
+#     api_key=os.getenv("OPENAI_API_KEY"),
+# )
+#
+# MODEL_NAME = os.getenv(
+#     "OPENAI_MODEL",
+#     "gpt-5.6-luna",
+# )
+
+
+# =========================================================
+# Required fields
+# =========================================================
 
 REQUIRED_FIELDS = [
     "activityType",
@@ -29,6 +63,26 @@ REQUIRED_FIELDS = [
     "budgetKrw",
 ]
 
+
+# =========================================================
+# Structured LLM output
+# =========================================================
+
+class LLMChatResult(BaseModel):
+    """
+    LLM에게 직접 받을 구조화 응답.
+
+    missingFields와 isReadyToAnalyze는
+    서버에서 직접 계산하기 때문에 포함하지 않는다.
+    """
+
+    assistantMessage: str
+    planDraft: PlanDraft
+
+
+# =========================================================
+# Prompt
+# =========================================================
 
 SYSTEM_PROMPT = """
 당신은 친환경 단체 행사 계획 서비스 GreenMate의 대화형 AI입니다.
@@ -50,7 +104,7 @@ SYSTEM_PROMPT = """
 - 탄소배출계수를 임의로 생성하지 마세요.
 - 비용을 임의로 생성하지 마세요.
 - 사용자가 제공하지 않은 필수 정보를 추측하여 확정하지 마세요.
-- 이동거리 등 알 수 없는 숫자를 추정값으로 저장하지 마세요.
+- 이동거리 등 알 수 없는 숫자를 임의로 추정하지 마세요.
 - 탄소 감축률을 계산하거나 임의로 제시하지 마세요.
 - 카탈로그에 없는 데이터의 수치를 만들어내지 마세요.
 
@@ -65,22 +119,29 @@ SYSTEM_PROMPT = """
 - lodgingPlan: 숙박 계획
 - suppliesPlan: 소모품 계획
 - budgetKrw: 전체 예산(원)
+
 - preferences:
   - maxAdditionalCostKrw
   - avoidItems
   - priority
 
-사용자가 새로운 값을 명확하게 말하면 기존 값보다 새로운 값을 우선하세요.
-
-사용자가 언급하지 않은 정보는 null 상태를 유지하세요.
-
-응답은 반드시 지정된 JSON 형식으로만 반환하세요.
+[중요]
+- 사용자가 새로운 값을 명확하게 말하면 기존 값보다 새 값을 우선하세요.
+- 사용자가 말하지 않은 정보는 null 상태를 유지하세요.
+- 기존 currentPlan에 값이 있고 사용자가 수정하지 않았다면 그 값을 유지하세요.
+- assistantMessage에는 다음으로 필요한 정보를 자연스럽게 질문하세요.
 """
 
 
-def _build_input(request: ChatRequest) -> str:
+# =========================================================
+# Helpers
+# =========================================================
+
+def _build_input(
+    request: ChatRequest,
+) -> str:
     """
-    현재 대화와 기존 계획을 LLM 입력용 문자열로 변환한다.
+    현재 대화와 기존 계획을 LLM 입력용 JSON 문자열로 변환한다.
     """
 
     conversation = [
@@ -92,162 +153,89 @@ def _build_input(request: ChatRequest) -> str:
     ]
 
     current_plan = (
-        request.currentPlan.model_dump(exclude_none=True)
+        request.currentPlan.model_dump(
+            exclude_none=True,
+        )
         if request.currentPlan
         else {}
     )
 
+    payload = {
+        "conversation": conversation,
+        "currentPlan": current_plan,
+    }
+
     return json.dumps(
-        {
-            "conversation": conversation,
-            "currentPlan": current_plan,
-        },
+        payload,
         ensure_ascii=False,
     )
 
 
-def _find_missing_fields(plan: PlanDraft) -> list[str]:
+def _find_missing_fields(
+    plan: PlanDraft,
+) -> list[str]:
     """
-    분석에 필요한 필수 필드 중 값이 없는 항목을 반환한다.
+    분석에 필요한 필수 정보 중
+    값이 없는 필드를 반환한다.
     """
 
     plan_data = plan.model_dump()
 
-    return [
-        field
-        for field in REQUIRED_FIELDS
-        if plan_data.get(field) is None
-    ]
+    missing_fields: list[str] = []
 
+    for field in REQUIRED_FIELDS:
+        value = plan_data.get(field)
+
+        if value is None:
+            missing_fields.append(field)
+
+    return missing_fields
+
+
+# =========================================================
+# Main service
+# =========================================================
 
 async def process_chat(
     request: ChatRequest,
 ) -> ChatResponse:
     """
-    사용자 대화를 분석해 계획 초안을 갱신하고
-    필요한 추가 질문을 생성한다.
+    사용자 대화를 분석하고 PlanDraft를 갱신한다.
     """
 
-    response = await client.responses.create(
-        model=OPENAI_MODEL,
-        instructions=SYSTEM_PROMPT,
-        input=_build_input(request),
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": "greenmate_chat_result",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "assistantMessage": {
-                            "type": "string",
-                        },
-                        "planDraft": {
-                            "type": "object",
-                            "properties": {
-                                "activityType": {
-                                    "type": ["string", "null"],
-                                },
-                                "destination": {
-                                    "type": ["string", "null"],
-                                },
-                                "participantCount": {
-                                    "type": ["integer", "null"],
-                                },
-                                "durationDays": {
-                                    "type": ["integer", "null"],
-                                },
-                                "transport": {
-                                    "type": ["string", "null"],
-                                },
-                                "roundTripDistanceKm": {
-                                    "type": ["number", "null"],
-                                },
-                                "mealPlan": {
-                                    "type": ["string", "null"],
-                                },
-                                "lodgingPlan": {
-                                    "type": ["string", "null"],
-                                },
-                                "suppliesPlan": {
-                                    "type": ["string", "null"],
-                                },
-                                "budgetKrw": {
-                                    "type": ["integer", "null"],
-                                },
-                                "preferences": {
-                                    "type": [
-                                        "object",
-                                        "null",
-                                    ],
-                                    "properties": {
-                                        "maxAdditionalCostKrw": {
-                                            "type": [
-                                                "integer",
-                                                "null",
-                                            ],
-                                        },
-                                        "avoidItems": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string",
-                                            },
-                                        },
-                                        "priority": {
-                                            "type": [
-                                                "string",
-                                                "null",
-                                            ],
-                                        },
-                                    },
-                                    "required": [
-                                        "maxAdditionalCostKrw",
-                                        "avoidItems",
-                                        "priority",
-                                    ],
-                                    "additionalProperties": False,
-                                },
-                            },
-                            "required": [
-                                "activityType",
-                                "destination",
-                                "participantCount",
-                                "durationDays",
-                                "transport",
-                                "roundTripDistanceKm",
-                                "mealPlan",
-                                "lodgingPlan",
-                                "suppliesPlan",
-                                "budgetKrw",
-                                "preferences",
-                            ],
-                            "additionalProperties": False,
-                        },
-                    },
-                    "required": [
-                        "assistantMessage",
-                        "planDraft",
-                    ],
-                    "additionalProperties": False,
-                },
-            }
-        },
+    completion = await client.beta.chat.completions.parse(
+        model=MODEL_NAME,
+        messages=[
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": _build_input(request),
+            },
+        ],
+        response_format=LLMChatResult,
     )
 
-    result = json.loads(response.output_text)
+    parsed = completion.choices[0].message.parsed
 
-    plan_draft = PlanDraft.model_validate(
-        result["planDraft"]
-    )
+    if parsed is None:
+        raise ValueError(
+            "LLM의 구조화 응답을 해석하지 못했습니다."
+        )
+
+    plan_draft = parsed.planDraft
 
     missing_fields = _find_missing_fields(
         plan_draft
     )
 
     return ChatResponse(
-        assistantMessage=result["assistantMessage"],
+        assistantMessage=parsed.assistantMessage,
         missingFields=missing_fields,
         planDraft=plan_draft,
-        isReadyToAnalyze=len(missing_fields) == 0,
+        isReadyToAnalyze=(
+            len(missing_fields) == 0
+        ),
     )
